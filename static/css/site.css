@@ -21,7 +21,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--bg);
@@ -63,6 +63,9 @@ button, input, textarea { font: inherit; color: inherit; }
 .btn-ghost:hover { border-color: var(--text-faint); background: var(--bg-elev); }
 .btn-sm { height: 34px; padding: 0 14px; font-size: 0.85rem; }
 .btn-lg { height: 52px; padding: 0 28px; font-size: 1rem; }
+
+.gh-icon { width: 16px; height: 16px; flex: none; fill: currentColor; }
+@media (max-width: 560px) { .btn .gh-label { display: none; } .btn.btn-gh { padding: 0 10px; } }
 
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
