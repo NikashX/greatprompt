@@ -72,3 +72,9 @@ def test_per_ip_rate_limit(client, fake_gemini):
     assert statuses[:5] == [200] * 5
     assert statuses[5] == 429
     assert "error" in client.post("/generate_prompt", json={"user_request": "hi"}).get_json()
+
+
+@pytest.mark.parametrize("path", ["/", "/main"])
+def test_pages_link_to_source_repo(client, path):
+    html = client.get(path).get_data(as_text=True)
+    assert 'href="https://github.com/NikashX/greatprompt"' in html

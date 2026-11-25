@@ -36,6 +36,8 @@ RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
 RATE_LIMIT_PER_IP = os.getenv("RATE_LIMIT_PER_IP", "5 per minute; 60 per day")
 GLOBAL_DAILY_LIMIT = os.getenv("GLOBAL_DAILY_LIMIT", "3000 per day")
 MAX_REQUEST_CHARS = int(os.getenv("MAX_REQUEST_CHARS", "8000"))
+# Source-code link shown in the UI; forks can point it at their own repo.
+REPO_URL = os.getenv("REPO_URL", "https://github.com/NikashX/greatprompt").rstrip("/")
 
 gemini = genai.Client(
     api_key=GEMINI_API_KEY,
@@ -55,6 +57,11 @@ app.config.update(MAX_CONTENT_LENGTH=64 * 1024)
 
 limiter = Limiter(get_remote_address, app=app, storage_uri=RATELIMIT_STORAGE_URI, default_limits=[])
 global_limit = limiter.shared_limit(GLOBAL_DAILY_LIMIT, scope="global", key_func=lambda: "global")
+
+
+@app.context_processor
+def inject_globals():
+    return {"repo_url": REPO_URL}
 
 
 @app.after_request

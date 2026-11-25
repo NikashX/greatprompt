@@ -60,6 +60,7 @@ All configuration is via environment variables (or `.env`, which is git-ignored 
 | `GLOBAL_DAILY_LIMIT` | no | `3000 per day` | Site-wide cap that bounds your Gemini bill |
 | `RATELIMIT_STORAGE_URI` | no | `memory://` | Use `redis://…` if you run more than one process |
 | `MAX_REQUEST_CHARS` | no | `8000` | Max size of a single request |
+| `REPO_URL` | no | `https://github.com/NikashX/greatprompt` | Source-code link in the UI (point it at your fork) |
 | `APP_PORT` | no | `8000` | Host port for Docker Compose |
 | `GUNICORN_THREADS` | no | `8` | Worker threads |
 | `LOG_LEVEL` | no | `INFO` | |
