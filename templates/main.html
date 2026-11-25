@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Builder — GreatPrompt</title>
+  <meta name="description" content="Free AI prompt builder. Describe your idea, get an expert-level prompt.">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='image.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <style>
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+    .app { flex: 1; padding: 32px 0 48px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+
+    .page-head { margin-bottom: 22px; }
+    .page-head h1 { margin: 0 0 6px; font-size: clamp(1.6rem, 3.4vw, 2.2rem); letter-spacing: -0.035em; font-weight: 800; }
+    .page-head p { margin: 0; color: var(--text-dim); }
+
+    .surface { background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+
+    /* Request */
+    .composer { padding: 16px; transition: border-color .15s, box-shadow .15s; }
+    .composer:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .composer label { display: block; font-size: .8rem; font-weight: 600; color: var(--text-faint); letter-spacing: .06em; text-transform: uppercase; padding: 4px 6px 0; }
+    .composer textarea {
+      display: block; width: 100%; min-height: 120px; max-height: 360px; resize: vertical;
+      border: 0; outline: 0; background: transparent; padding: 10px 6px; font-size: 1.05rem; line-height: 1.6;
+    }
+    .composer textarea::placeholder { color: var(--text-faint); }
+    .composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+    .composer-meta { display: flex; align-items: center; gap: 14px; color: var(--text-faint); font-size: .82rem; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+    .chip { border: 1px solid var(--line-strong); background: transparent; color: var(--text-dim); padding: 6px 12px; border-radius: 999px; font-size: .82rem; cursor: pointer; transition: all .15s; }
+    .chip:hover { color: var(--text); border-color: var(--text-faint); background: var(--bg-elev); }
+
+    /* Output */
+    .output { margin-top: 24px; overflow: hidden; }
+    .output-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    .output-bar h2 { margin: 0; font-size: .95rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+    .status-dot.ready { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .status-dot.busy { background: #ffd166; animation: pulse 1s infinite; }
+    .status-dot.err { background: var(--danger); }
+    @keyframes pulse { 50% { opacity: .35; } }
+    .output-actions { display: flex; gap: 8px; }
+    .output-body { padding: 24px; min-height: 320px; }
+
+    .empty { display: grid; place-items: center; text-align: center; min-height: 272px; color: var(--text-faint); }
+    .empty .glyph { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; margin: 0 auto 14px; border: 1px dashed var(--line-strong); font-size: 1.4rem; }
+    .empty p { margin: 0; max-width: 340px; }
+
+    .skeleton div { height: 12px; border-radius: 6px; margin-bottom: 14px; background: linear-gradient(90deg, var(--bg-elev-2), #1d2122, var(--bg-elev-2)); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .loading-note { color: var(--text-dim); font-size: .9rem; margin-bottom: 18px; }
+
+    .error-box { border: 1px solid rgba(255,107,107,.35); background: rgba(255,107,107,.08); color: #ffb3b3; padding: 14px 16px; border-radius: var(--radius); }
+
+    /* Rendered markdown */
+    .md { color: #d8ded9; font-size: .98rem; line-height: 1.7; overflow-wrap: anywhere; }
+    .md > *:first-child { margin-top: 0; }
+    .md h1, .md h2, .md h3, .md h4 { color: var(--text); letter-spacing: -0.02em; line-height: 1.3; margin: 1.6em 0 .6em; }
+    .md h1 { font-size: 1.35rem; } .md h2 { font-size: 1.2rem; } .md h3, .md h4 { font-size: 1.05rem; }
+    .md p { margin: .7em 0; }
+    .md ul, .md ol { padding-left: 1.3em; margin: .6em 0; }
+    .md li { margin: .3em 0; }
+    .md li::marker { color: var(--accent); }
+    .md strong { color: var(--text); }
+    .md a { color: var(--accent); text-decoration: underline; }
+    .md code { font-family: var(--mono); font-size: .86em; background: var(--bg-elev-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; }
+    .md hr { border: 0; border-top: 1px solid var(--line); margin: 1.6em 0; }
+    .md table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+    .md th, .md td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; }
+    .code-wrap { position: relative; margin: 1em 0; border: 1px solid var(--accent-line); border-radius: var(--radius); background: #0b0d0c; overflow: hidden; }
+    .code-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--line); background: rgba(0,255,127,.04); }
+    .code-head span { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+    .md pre { margin: 0; padding: 16px; overflow-x: auto; }
+    .md pre code { background: none; border: 0; padding: 0; font-size: .84rem; line-height: 1.7; white-space: pre-wrap; color: #e3e9e5; }
+
+    /* Sidebar */
+    .side { position: sticky; top: 88px; padding: 6px; }
+    .side details { border-radius: var(--radius); }
+    .side summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; }
+    .side summary::-webkit-details-marker { display: none; }
+    .side summary h2 { margin: 0; font-size: 1rem; }
+    .side summary small { display: block; color: var(--text-faint); font-weight: 400; font-size: .82rem; margin-top: 2px; }
+    .side summary .chev { color: var(--text-faint); transition: transform .2s; }
+    .side details[open] summary .chev { transform: rotate(180deg); }
+    .fields { padding: 4px 14px 14px; display: grid; gap: 14px; }
+    .field label { display: block; font-size: .82rem; font-weight: 500; color: var(--text-dim); margin-bottom: 6px; }
+    .field input {
+      width: 100%; height: 40px; padding: 0 12px; border-radius: 10px;
+      background: var(--bg); border: 1px solid var(--line-strong); color: var(--text); font-size: .9rem; outline: 0;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input::placeholder { color: var(--text-faint); }
+    .field input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .side-foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 12px; border-top: 1px solid var(--line); color: var(--text-faint); font-size: .8rem; }
+    .linkish { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: .8rem; padding: 0; }
+    .linkish:hover { color: var(--text); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+      background: var(--text); color: var(--bg); font-weight: 600; font-size: .88rem; padding: 10px 16px; border-radius: 999px;
+      transition: opacity .2s, transform .2s; z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .side { position: static; order: -1; }
+    }
+    @media (max-width: 560px) {
+      .app { padding-top: 20px; }
+      .composer-foot { flex-direction: column; align-items: stretch; }
+      .composer-foot .btn { width: 100%; }
+      .composer-meta .kbd-hint { display: none; }
+      .output-body { padding: 18px 16px; }
+      .output-actions .btn-copy-all { display: none; }
+      .nav-right .pill { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="{{ url_for('landing') }}" class="brand"><span class="brand-mark">G</span><span>Great<em>Prompt</em></span></a>
+      <div class="nav-right">
+        <span class="pill"><span class="dot"></span>Free · No sign-up</span>
+        <a href="{{ url_for('landing') }}" class="btn btn-ghost btn-sm">Home</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="app">
+    <div class="container page-head">
+      <h1>Prompt Builder</h1>
+      <p>Describe what you need, optionally fine-tune the details, then generate.</p>
+    </div>
+    <div class="container layout">
+      <div>
+        <section class="surface composer">
+          <label for="prompt-request">What do you want to generate a prompt for?</label>
+          <textarea id="prompt-request" maxlength="{{ max_chars }}"
+            placeholder="e.g. Write a product launch email, summarize a research paper, generate blog ideas…"></textarea>
+          <div class="composer-foot">
+            <div class="composer-meta">
+              <span id="char-count">0 / {{ max_chars }}</span>
+              <span class="kbd-hint"><span class="kbd">⌘</span> <span class="kbd">Enter</span> to generate</span>
+            </div>
+            <button id="generate-btn" class="btn btn-primary" type="button">Generate prompt →</button>
+          </div>
+        </section>
+
+        <div class="chips" aria-label="Example ideas">
+          <button type="button" class="chip" data-q="A product launch email for a new fitness app">Product launch email</button>
+          <button type="button" class="chip" data-q="Summarize a research paper for a non-technical audience">Summarize a paper</button>
+          <button type="button" class="chip" data-q="A Python script that cleans and deduplicates a CSV file">Python script</button>
+          <button type="button" class="chip" data-q="A LinkedIn post announcing a company milestone">LinkedIn post</button>
+          <button type="button" class="chip" data-q="Generate 10 blog post ideas for a personal finance blog">Blog ideas</button>
+        </div>
+
+        <section class="surface output" aria-live="polite">
+          <div class="output-bar">
+            <h2><span class="status-dot" id="status-dot"></span><span id="status-text">Generated prompt</span></h2>
+            <div class="output-actions">
+              <button class="btn btn-ghost btn-sm btn-copy-all" id="copy-all" type="button" disabled>Copy all</button>
+              <button class="btn btn-primary btn-sm" id="copy-prompt" type="button" disabled>Copy prompt</button>
+            </div>
+          </div>
+          <div class="output-body" id="output">
+            <div class="empty">
+              <div>
+                <div class="glyph">✦</div>
+                <p>Your prompt will appear here, along with the assumptions made and recommended model settings.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="surface side">
+        <details id="refine" open>
+          <summary>
+            <div><h2>Fine-tune</h2><small>All optional. Leave blank for smart defaults.</small></div>
+            <span class="chev">▾</span>
+          </summary>
+          <div class="fields">
+            <div class="field"><label for="user_tone">Tone</label><input id="user_tone" type="text" placeholder="Casual, professional, academic"></div>
+            <div class="field"><label for="context">Context</label><input id="context" type="text" placeholder="Startup pitch, Instagram post, essay"></div>
+            <div class="field"><label for="prompt_size">Prompt size</label><input id="prompt_size" type="text" placeholder="Small, medium, large or >100 words"></div>
+            <div class="field"><label for="negative_aspects">Anything to avoid?</label><input id="negative_aspects" type="text" placeholder="No jargon, avoid specific topics"></div>
+            <div class="field"><label for="country_lang">Target language or region</label><input id="country_lang" type="text" placeholder="US & English, France & French"></div>
+            <div class="field"><label for="industry">Industry</label><input id="industry" type="text" placeholder="Healthcare, retail, education"></div>
+            <div class="field"><label for="output_format">How should the output look?</label><input id="output_format" type="text" placeholder="JSON, text, image, link"></div>
+          </div>
+          <div class="side-foot">
+            <span>Version 1.347</span>
+            <button type="button" class="linkish" id="clear-fields">Clear fields</button>
+          </div>
+        </details>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>© 2025 GreatPrompt</span>
+      <span><a href="{{ url_for('terms') }}">Terms &amp; Privacy</a></span>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script>
+  (function () {
+    var FIELDS = ['user_tone', 'context', 'prompt_size', 'negative_aspects', 'country_lang', 'industry', 'output_format'];
+    var STORE_KEY = 'gp.fields';
+    var $ = function (id) { return document.getElementById(id); };
+    var req = $('prompt-request'), out = $('output'), btn = $('generate-btn');
+    var copyPromptBtn = $('copy-prompt'), copyAllBtn = $('copy-all');
+    var rawOutput = '', busy = false;
+
+    // Safe localStorage helpers (may be unavailable in private mode).
+    function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) { return {}; } }
+    function save() {
+      var data = {}; FIELDS.forEach(function (f) { data[f] = $(f).value; });
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {}
+    }
+    var saved = load();
+    FIELDS.forEach(function (f) { if (saved[f]) $(f).value = saved[f]; $(f).addEventListener('input', save); });
+    if (window.matchMedia('(max-width: 980px)').matches && !FIELDS.some(function (f) { return $(f).value; })) {
+      $('refine').removeAttribute('open');
+    }
+    $('clear-fields').addEventListener('click', function () { FIELDS.forEach(function (f) { $(f).value = ''; }); save(); });
+
+    // Prefill from the landing page (?q=...)
+    var q = new URLSearchParams(location.search).get('q');
+    if (q) { req.value = q; history.replaceState(null, '', location.pathname); }
+
+    function updateCount() { $('char-count').textContent = req.value.length + ' / ' + req.maxLength; }
+    req.addEventListener('input', updateCount); updateCount();
+
+    document.querySelectorAll('.chip').forEach(function (c) {
+      c.addEventListener('click', function () { req.value = c.dataset.q; updateCount(); req.focus(); });
+    });
+
+    req.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); }
+    });
+    btn.addEventListener('click', generate);
+
+    function setStatus(kind, text) {
+      $('status-dot').className = 'status-dot' + (kind ? ' ' + kind : '');
+      $('status-text').textContent = text;
+    }
+    function toast(msg) {
+      var t = $('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 1800);
+    }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function firstCodeBlock(md) {
+      var m = md.match(/```[^\n]*\n([\s\S]*?)```/);
+      return m ? m[1].trim() : md.trim();
+    }
+
+    function renderMarkdown(md) {
+      var html = (window.marked && window.DOMPurify)
+        ? DOMPurify.sanitize(marked.parse(md, { gfm: true, breaks: false }))
+        : '<pre><code>' + escapeHtml(md) + '</code></pre>';
+      out.innerHTML = '<div class="md">' + html + '</div>';
+      out.querySelectorAll('.md pre').forEach(function (pre, i) {
+        var wrap = document.createElement('div'); wrap.className = 'code-wrap';
+        var head = document.createElement('div'); head.className = 'code-head';
+        head.innerHTML = '<span>' + (i === 0 ? 'Your prompt' : 'Snippet') + '</span>';
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.textContent = 'Copy';
+        b.addEventListener('click', function () { copy(pre.innerText.trim(), b); });
+        head.appendChild(b);
+        pre.parentNode.insertBefore(wrap, pre); wrap.appendChild(head); wrap.appendChild(pre);
+      });
+    }
+
+    async function copy(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        if (button) { var old = button.textContent; button.textContent = 'Copied ✓'; setTimeout(function () { button.textContent = old; }, 1600); }
+        toast('Copied to clipboard');
+      } catch (e) { toast('Could not copy. Select the text manually.'); }
+    }
+    copyPromptBtn.addEventListener('click', function () { copy(firstCodeBlock(rawOutput), copyPromptBtn); });
+    copyAllBtn.addEventListener('click', function () { copy(rawOutput, copyAllBtn); });
+
+    async function generate() {
+      if (busy) return;
+      var text = req.value.trim();
+      if (!text) { req.focus(); toast('Describe what you want a prompt for first'); return; }
+
+      busy = true; btn.disabled = true; btn.textContent = 'Generating…';
+      copyPromptBtn.disabled = copyAllBtn.disabled = true;
+      setStatus('busy', 'Crafting your prompt…');
+      out.innerHTML = '<p class="loading-note">Analyzing your request and building the prompt. This can take up to a minute.</p>' +
+        '<div class="skeleton"><div style="width:42%"></div><div style="width:92%"></div><div style="width:86%"></div><div style="width:70%"></div><div style="width:94%"></div><div style="width:60%"></div></div>';
+
+      var body = { user_request: text };
+      FIELDS.forEach(function (f) { body[f] = $(f).value.trim(); });
+
+      try {
+        var res = await fetch('{{ url_for("generate_prompt") }}', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        var data = {};
+        try { data = await res.json(); } catch (e) {}
+        if (!res.ok || !data.generated_output) throw new Error(data.error || 'Something went wrong (' + res.status + '). Please try again.');
+        rawOutput = data.generated_output;
+        renderMarkdown(rawOutput);
+        copyPromptBtn.disabled = copyAllBtn.disabled = false;
+        setStatus('ready', 'Prompt ready');
+      } catch (e) {
+        rawOutput = '';
+        out.innerHTML = '<div class="error-box">' + escapeHtml(e.message || 'Network error. Please try again.') + '</div>';
+        setStatus('err', 'Something went wrong');
+      } finally {
+        busy = false; btn.disabled = false; btn.textContent = 'Generate prompt →';
+      }
+    }
+  })();
+  </script>
+</body>
+</html>

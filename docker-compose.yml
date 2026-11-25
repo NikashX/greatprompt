@@ -1,0 +1,25 @@
+services:
+  greatprompt:
+    build: .
+    image: greatprompt:latest
+    container_name: greatprompt
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # Only reachable from the VPS itself; expose publicly via your reverse proxy.
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=1777
+      - /home/appuser:uid=10001,gid=10001,mode=0700
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

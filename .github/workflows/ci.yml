@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t greatprompt:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name gp -e GEMINI_API_KEY=dummy -p 8000:8000 greatprompt:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/healthz; then exit 0; fi
+            sleep 2
+          done
+          docker logs gp
+          exit 1
